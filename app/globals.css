@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 220 15% 4%;
+    --foreground: 210 20% 88%;
+    --card: 220 15% 7%;
+    --card-foreground: 210 20% 88%;
+    --popover: 220 15% 6%;
+    --popover-foreground: 210 20% 88%;
+    --primary: 185 60% 50%;
+    --primary-foreground: 220 15% 4%;
+    --secondary: 220 12% 12%;
+    --secondary-foreground: 210 15% 75%;
+    --muted: 220 12% 10%;
+    --muted-foreground: 215 10% 45%;
+    --accent: 185 60% 50%;
+    --accent-foreground: 220 15% 4%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 220 12% 14%;
+    --input: 220 12% 14%;
+    --ring: 185 60% 50%;
+    --chart-1: 185 60% 50%;
+    --chart-2: 185 40% 35%;
+    --chart-3: 200 30% 25%;
+    --chart-4: 170 50% 40%;
+    --chart-5: 195 45% 45%;
+    --radius: 0.75rem;
+    --glass: 220 15% 8%;
+    --glass-border: 220 15% 16%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground;
+    overflow: hidden;
+    height: 100%;
+  }
+  #__next {
+    height: 100%;
+  }
+}
+
+/* Glass morphism utilities */
+@layer components {
+  .glass-panel {
+    background: hsl(var(--glass) / 0.6);
+    backdrop-filter: blur(24px) saturate(1.2);
+    border: 1px solid hsl(var(--glass-border) / 0.3);
+  }
+  .glass-panel-strong {
+    background: hsl(var(--glass) / 0.8);
+    backdrop-filter: blur(40px) saturate(1.4);
+    border: 1px solid hsl(var(--glass-border) / 0.4);
+  }
+  .glass-glow {
+    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.15),
+                inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
