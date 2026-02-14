@@ -40,7 +40,6 @@ Organizations lack a unified system to validate digital documents securely and e
 ## 💡 Our Solution
 
 SIC MUNDUS provides:
-- OCR-based text extraction
 - Intelligent document validation
 - Trust scoring system
 - Secure backend storage
@@ -58,11 +57,7 @@ Frontend:
 Backend:
 - Node.js
 - Express.js
-- SQLite
-
-AI / Processing:
-- PaddleOCR
-- Text preprocessing & validation
+- MongoDB
 
 🏗 6. System Architecture
 
