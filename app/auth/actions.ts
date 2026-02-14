@@ -28,32 +28,30 @@ export async function loginAction(formData: FormData): Promise<AuthResult> {
     return { success: false, error: "Email and password are required" }
   }
 
-  const user = await findUserByEmail(email)
-  console.log(`[v0] loginAction: userFound=${!!user}`)
-  if (!user) {
-    return { success: false, error: "Invalid credentials" }
+  try {
+    const res = await fetch("http://localhost:5000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { success: false, error: data.message || "Invalid credentials" }
+    }
+
+    const { token } = data;
+
+    const cookieStore = await cookies()
+    cookieStore.set(getCookieName(), token, getCookieOptions())
+
+    console.log(`[v0] loginAction: cookie set, returning success`)
+    return { success: true, redirect: "/dashboard" }
+  } catch (err) {
+    console.error("Login failed:", err);
+    return { success: false, error: "Something went wrong. Please try again." };
   }
-
-  const valid = await verifyPassword(password, user.passwordHash)
-  console.log(`[v0] loginAction: passwordValid=${valid}`)
-  if (!valid) {
-    return { success: false, error: "Invalid credentials" }
-  }
-
-  const token = await createJWT({
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-  })
-
-  console.log(`[v0] loginAction: tokenCreated, length=${token.length}`)
-
-  const cookieStore = await cookies()
-  cookieStore.set(getCookieName(), token, getCookieOptions())
-
-  console.log(`[v0] loginAction: cookie set, returning success`)
-  return { success: true, redirect: "/dashboard" }
 }
 
 export async function signupAction(formData: FormData): Promise<AuthResult> {
@@ -65,36 +63,29 @@ export async function signupAction(formData: FormData): Promise<AuthResult> {
     return { success: false, error: "All fields are required" }
   }
 
-  if (password.length < 8) {
-    return { success: false, error: "Password must be at least 8 characters" }
-  }
+  try {
+    const res = await fetch("http://localhost:5000/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
 
-  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-    return {
-      success: false,
-      error: "Password must contain uppercase, lowercase, and a number",
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { success: false, error: data.message || "Signup failed" }
     }
+
+    const { token } = data;
+
+    const cookieStore = await cookies()
+    cookieStore.set(getCookieName(), token, getCookieOptions())
+
+    return { success: true, redirect: "/dashboard" }
+  } catch (err) {
+    console.error("Signup failed:", err);
+    return { success: false, error: "Something went wrong. Please try again." };
   }
-
-  const existing = await findUserByEmail(email)
-  if (existing) {
-    return { success: false, error: "An account with this email already exists" }
-  }
-
-  const passwordHash = await hashPassword(password)
-  const user = await createUser(email, name, passwordHash)
-
-  const token = await createJWT({
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-  })
-
-  const cookieStore = await cookies()
-  cookieStore.set(getCookieName(), token, getCookieOptions())
-
-  return { success: true, redirect: "/dashboard" }
 }
 
 export async function logoutAction(): Promise<AuthResult> {
@@ -107,5 +98,9 @@ export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get(getCookieName())?.value
   if (!token) return null
-  return verifyJWT(token)
+  const payload = await verifyJWT(token)
+  if (payload) {
+    return { ...payload, token }
+  }
+  return null
 }

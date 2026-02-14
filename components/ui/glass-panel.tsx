@@ -1,12 +1,14 @@
 "use client"
 
-import { forwardRef, type HTMLAttributes } from "react"
+import { forwardRef, type ReactNode } from "react"
 import { motion, type HTMLMotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
 
-interface GlassPanelProps extends HTMLMotionProps<"div"> {
+export interface GlassPanelProps extends HTMLMotionProps<"div"> {
   variant?: "default" | "strong" | "subtle"
   glow?: boolean
+  children?: ReactNode
+  className?: string
 }
 
 const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(
@@ -21,7 +23,7 @@ const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(
       <motion.div
         ref={ref}
         className={cn(
-          variantClasses[variant],
+          variantClasses[variant as keyof typeof variantClasses] || variantClasses.default,
           glow && "glass-glow",
           "rounded-lg",
           className

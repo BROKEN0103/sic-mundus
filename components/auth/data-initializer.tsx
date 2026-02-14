@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { useAppStore } from "@/stores/app-store"
-import { demoDocuments, demoAccessLogs } from "@/lib/seed-data"
+import { fetchDashboardData } from "@/app/(authenticated)/dashboard/actions"
 
 export function DataInitializer() {
   const setDocuments = useAppStore((s) => s.setDocuments)
@@ -11,8 +11,10 @@ export function DataInitializer() {
 
   useEffect(() => {
     if (!initialized.current) {
-      setDocuments(demoDocuments)
-      setAccessLogs(demoAccessLogs)
+      fetchDashboardData().then(({ documents, accessLogs }) => {
+        setDocuments(documents)
+        setAccessLogs(accessLogs)
+      })
       initialized.current = true
     }
   }, [setDocuments, setAccessLogs])

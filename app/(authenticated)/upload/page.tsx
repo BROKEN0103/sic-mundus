@@ -22,6 +22,7 @@ function formatBytes(bytes: number) {
 }
 
 interface PendingFile {
+  file: File
   name: string
   size: number
   type: string
@@ -40,6 +41,7 @@ export default function UploadPage() {
   const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(["admin"])
   const [downloadAllowed, setDownloadAllowed] = useState(true)
   const [expiryDays, setExpiryDays] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const canUpload = user?.role === "admin" || user?.role === "editor"
 
@@ -47,6 +49,7 @@ export default function UploadPage() {
     e.preventDefault()
     setDragActive(false)
     const files = Array.from(e.dataTransfer.files).map((f) => ({
+      file: f,
       name: f.name,
       size: f.size,
       type: f.type || "application/octet-stream",
@@ -60,6 +63,7 @@ export default function UploadPage() {
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []).map((f) => ({
+        file: f,
         name: f.name,
         size: f.size,
         type: f.type || "application/octet-stream",
@@ -75,44 +79,69 @@ export default function UploadPage() {
   const handleUpload = useCallback(async () => {
     if (!user || pendingFiles.length === 0) return
     setUploading(true)
-    await new Promise((r) => setTimeout(r, 1500))
 
-    const file = pendingFiles[0]
-    const docType = file.type.startsWith("video/")
-      ? "video"
-      : file.type.startsWith("image/")
-        ? "image"
-        : "document"
+    // Create FormData
+    const formData = new FormData()
+    formData.append("file", pendingFiles[0].file) // We need the actual File object
+    formData.append("title", title || pendingFiles[0].name)
+    formData.append("description", "Uploaded via web interface")
 
-    const newDoc = {
-      id: `d-${Date.now()}`,
-      title: title || file.name,
-      type: docType as "video" | "document" | "image",
-      mimeType: file.type,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-      expiresAt: expiryDays
-        ? new Date(Date.now() + expiryDays * 86400000).toISOString()
-        : null,
-      uploadedBy: user.id,
-      accessRoles: selectedRoles,
-      downloadAllowed,
+    try {
+      console.log(`[Frontend] Uploading to http://localhost:5000/api/models`);
+      console.log(`[Frontend] File name: ${pendingFiles[0].name}, size: ${pendingFiles[0].size}`);
+
+      const res = await fetch("http://127.0.0.1:5000/api/models", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${user.token}`
+        },
+        body: formData
+      })
+
+      console.log(`[Frontend] Response status: ${res.status}`);
+
+      if (!res.ok) throw new Error("Upload failed")
+
+      const newModel = await res.json()
+
+      const newDoc = {
+        id: newModel._id,
+        title: newModel.title,
+        type: "document" as const, // naive type
+        mimeType: pendingFiles[0].type,
+        size: pendingFiles[0].size,
+        uploadedAt: newModel.createdAt,
+        expiresAt: expiryDays
+          ? new Date(Date.now() + expiryDays * 86400000).toISOString()
+          : null,
+        uploadedBy: user.name,
+        accessRoles: selectedRoles,
+        downloadAllowed,
+        metadata: { fileUrl: `http://localhost:5000/uploads/${newModel.fileUrl}` }
+      }
+
+      addDocument(newDoc)
+      // Activity is added by backend, but we can add to local store for immediate feedback if we want.
+      // But better to re-fetch logs or just let backend handle it. 
+      // The store's addAccessLog updates the UI immediately.
+      addAccessLog({
+        id: `log-${Date.now()}`,
+        userId: user.id,
+        userName: user.name,
+        documentId: newDoc.id,
+        documentTitle: newDoc.title,
+        action: "upload",
+        timestamp: new Date().toISOString(),
+        granted: true,
+      })
+
+      setUploading(false)
+      setUploaded(true)
+    } catch (err: any) {
+      console.error("[Frontend] Upload error:", err)
+      setUploading(false)
+      setError(`Upload failed: ${err.message || "Network error"}`)
     }
-
-    addDocument(newDoc)
-    addAccessLog({
-      id: `log-${Date.now()}`,
-      userId: user.id,
-      userName: user.name,
-      documentId: newDoc.id,
-      documentTitle: newDoc.title,
-      action: "upload",
-      timestamp: new Date().toISOString(),
-      granted: true,
-    })
-
-    setUploading(false)
-    setUploaded(true)
   }, [user, pendingFiles, title, selectedRoles, downloadAllowed, expiryDays, addDocument, addAccessLog])
 
   const reset = useCallback(() => {
@@ -122,6 +151,7 @@ export default function UploadPage() {
     setDownloadAllowed(true)
     setExpiryDays(null)
     setUploaded(false)
+    setError(null)
   }, [])
 
   if (!canUpload) {
@@ -184,9 +214,8 @@ export default function UploadPage() {
             >
               {/* Drop Zone */}
               <GlassPanel
-                className={`relative flex flex-col items-center justify-center p-12 transition-all ${
-                  dragActive ? "border-primary/40 bg-primary/5" : ""
-                }`}
+                className={`relative flex flex-col items-center justify-center p-12 transition-all ${dragActive ? "border-primary/40 bg-primary/5" : ""
+                  }`}
                 onDragOver={(e: React.DragEvent) => {
                   e.preventDefault()
                   setDragActive(true)
@@ -268,11 +297,10 @@ export default function UploadPage() {
                                 : [...prev, role]
                             )
                           }
-                          className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                            selectedRoles.includes(role)
-                              ? "bg-primary/15 text-primary"
-                              : "bg-secondary text-muted-foreground"
-                          }`}
+                          className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${selectedRoles.includes(role)
+                            ? "bg-primary/15 text-primary"
+                            : "bg-secondary text-muted-foreground"
+                            }`}
                         >
                           {role}
                         </button>
@@ -289,11 +317,10 @@ export default function UploadPage() {
                       </label>
                       <button
                         onClick={() => setDownloadAllowed(!downloadAllowed)}
-                        className={`w-full rounded-lg px-3 py-2 text-xs transition-colors ${
-                          downloadAllowed
-                            ? "bg-primary/15 text-primary"
-                            : "bg-secondary text-muted-foreground"
-                        }`}
+                        className={`w-full rounded-lg px-3 py-2 text-xs transition-colors ${downloadAllowed
+                          ? "bg-primary/15 text-primary"
+                          : "bg-secondary text-muted-foreground"
+                          }`}
                       >
                         {downloadAllowed ? "Allowed" : "Restricted"}
                       </button>
@@ -318,6 +345,17 @@ export default function UploadPage() {
                       </select>
                     </div>
                   </div>
+
+                  {/* Error Message */}
+                  {error && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="text-center text-xs text-destructive"
+                    >
+                      {error}
+                    </motion.p>
+                  )}
 
                   {/* Upload Button */}
                   <motion.button

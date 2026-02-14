@@ -20,10 +20,11 @@ async function seedDemoUsers() {
   if (seeded) return
   seeded = true
 
+  // Using valid 24-character hex strings for ObjectIds to match MongoDB expectations
   const demoAccounts: { id: string; email: string; name: string; role: UserRole; password: string }[] = [
-    { id: "u1", email: "admin@vault.io", name: "System Admin", role: "admin", password: "demo" },
-    { id: "u2", email: "editor@vault.io", name: "Content Editor", role: "editor", password: "demo" },
-    { id: "u3", email: "viewer@vault.io", name: "External Viewer", role: "viewer", password: "demo" },
+    { id: "65cb658c2e6f4a8649739011", email: "admin@vault.io", name: "System Admin", role: "admin", password: "demo" },
+    { id: "65cb658c2e6f4a8649739012", email: "editor@vault.io", name: "Content Editor", role: "editor", password: "demo" },
+    { id: "65cb658c2e6f4a8649739013", email: "viewer@vault.io", name: "External Viewer", role: "viewer", password: "demo" },
   ]
 
   for (const account of demoAccounts) {
@@ -55,7 +56,8 @@ export async function createUser(
     throw new Error("A user with this email already exists")
   }
 
-  const id = `u${Date.now()}`
+  // Generate a valid ObjectId-like string (24 hex chars)
+  const id = Math.floor(Date.now() / 1000).toString(16) + "0000000000000000".slice(0, 16)
   const newUser: StoredUser = { id, email, name, role, passwordHash }
   users.set(email, newUser)
   return newUser

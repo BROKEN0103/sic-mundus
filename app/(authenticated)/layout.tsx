@@ -15,11 +15,12 @@ export default async function AuthenticatedLayout({
 
   const user = session
     ? {
-        id: session.userId,
-        email: session.email,
-        name: session.name,
-        role: session.role,
-      }
+      id: session.userId,
+      email: session.email,
+      name: session.name,
+      role: session.role,
+      token: session.token,
+    }
     : null
 
   return (
